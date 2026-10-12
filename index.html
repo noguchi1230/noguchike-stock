@@ -2856,7 +2856,14 @@
       } catch (err) {
         console.error("Notion sync error:", err);
         if (!silent) {
-          showToast("❌ 通信エラー: n8nが未公開(Publish前)か、URLに誤りがあります");
+          const msg = err.message || "";
+          if (msg.includes("404")) {
+            showToast("❌ エラー 404: n8nが未公開(Publish前)か、Webhook URLが間違っています");
+          } else if (msg.includes("500") || msg.includes("502")) {
+            showToast("❌ n8nサーバー内部エラー: ワークフローの各ノード設定をご確認ください");
+          } else {
+            showToast(`❌ 通信エラー (${msg || '接続不可'}): n8nの公開状態(Publish)をご確認ください`);
+          }
         }
       } finally {
         
