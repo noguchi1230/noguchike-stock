@@ -1893,7 +1893,7 @@
         
         <div style="margin-bottom: 12px;">
           <label style="font-size: 0.75rem; font-weight: 700; color: #555; display: block; margin-bottom: 4px;">n8n Webhook URL (Production URL):</label>
-          <input type="text" id="webhookUrlInput" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff;" placeholder="https://inuwan2.app.n8n.cloud/webhook/stock-action" onchange="saveWebhookUrl()">
+          <input type="text" id="webhookUrlInput" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff;" value="https://inuwan2.app.n8n.cloud/webhook/stock-action" placeholder="https://inuwan2.app.n8n.cloud/webhook/stock-action" onchange="saveWebhookUrl()">
         </div>
 
         <!-- 🌟 目立つNotion同期ボタン -->
@@ -2087,15 +2087,14 @@
       }
       syncAllProductsToUI();
 
-      // Webhook URLの初期表示
-      const savedWebhook = safeStorage.get("stockmart_webhook_url");
+      // Webhook URLの初期表示 (デフォルトURLを必ず自動設定)
       const webhookInput = document.getElementById("webhookUrlInput");
-      if (savedWebhook && webhookInput) {
-        webhookInput.value = savedWebhook;
+      if (webhookInput) {
+        webhookInput.value = getWebhookUrl();
       }
 
       // Notionからの自動在庫同期チェック (URL設定済みの場合)
-      if (safeStorage.get("stockmart_webhook_url")) {
+      if (getWebhookUrl()) {
         setTimeout(() => fetchStocksFromNotion(true), 800);
       }
 
@@ -2609,6 +2608,24 @@
       overlay.classList.toggle("active", next);
     }
 
+    
+    // デフォルトのn8n Webhook URL (消去・初期化対策)
+    const DEFAULT_WEBHOOK_URL = "https://inuwan2.app.n8n.cloud/webhook/stock-action";
+
+    function getWebhookUrl() {
+      const saved = safeStorage.get("stockmart_webhook_url");
+      if (saved && saved.trim()) return saved.trim();
+      // 入力欄に値があればそれを使う
+      const input = document.getElementById("webhookUrlInput");
+      if (input && input.value.trim()) {
+        safeStorage.set("stockmart_webhook_url", input.value.trim());
+        return input.value.trim();
+      }
+      // なければデフォルトURLを自動保存して返す
+      safeStorage.set("stockmart_webhook_url", DEFAULT_WEBHOOK_URL);
+      return DEFAULT_WEBHOOK_URL;
+    }
+
     function saveWebhookUrl() {
       const input = document.getElementById("webhookUrlInput");
       if (input) {
@@ -2618,7 +2635,7 @@
     }
 
     function triggerN8nAutoRegister(barcode) {
-      const url = safeStorage.get("stockmart_webhook_url");
+      const url = getWebhookUrl();
       if (!url) return;
       fetch(url, {
         method: "POST",
@@ -2663,7 +2680,7 @@
 
     // Notionへ在庫数の増減をバックグラウンド送信 (消費/補充)
         function syncStockChangeToNotion(item, delta) {
-      const webhookUrl = safeStorage.get("stockmart_webhook_url");
+      const webhookUrl = getWebhookUrl();
       if (!webhookUrl || !item) return;
 
       fetch(webhookUrl, {
@@ -2750,7 +2767,7 @@
     // Notionから最新在庫一覧を取得してWebアプリへ反映
         // Notionから最新在庫一覧を取得してWebアプリへ反映 (CORS Preflight完全回避版)
     async function fetchStocksFromNotion(silent = false) {
-      const webhookUrl = safeStorage.get("stockmart_webhook_url");
+      const webhookUrl = getWebhookUrl();
       if (!webhookUrl) {
         if (!silent) {
           showToast("⚠️ n8n Webhook URLが未設定です。「🔔」タブからURLを設定してください");
