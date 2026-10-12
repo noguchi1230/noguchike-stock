@@ -2040,6 +2040,13 @@
     let searchQuery = "";
     let scanMode = "restock";
     let lastUndoAction = null;
+
+    // ==========================================
+    // ⚙️ 取り消し (Undo) タイマー設定
+    // ==========================================
+    // 秒数を変更したい場合はここを変更してください (例: 3秒なら 3000, 2秒なら 2000)
+    const UNDO_DURATION_MS = 3000; 
+
     let toastTimeout = null;
 
     function getConsumeVerb(cat) {
@@ -2386,13 +2393,16 @@
 
       setTimeout(() => {
         const bar = document.getElementById("toastTimerBar");
-        if (bar) bar.style.width = "0%";
+        if (bar) {
+          bar.style.transition = `width ${UNDO_DURATION_MS / 1000}s linear`;
+          bar.style.width = "0%";
+        }
       }, 50);
 
       toastTimeout = setTimeout(() => {
         toast.classList.remove("show");
         lastUndoAction = null;
-      }, 5500);
+      }, UNDO_DURATION_MS);
     }
 
     function showToast(msg, isRed = false) {
