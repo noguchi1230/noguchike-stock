@@ -992,14 +992,17 @@
   <!-- 🔄 クイックNotion同期バー (スマホ対応) -->
   <div class="quick-notion-bar">
     <div style="font-size: 0.8rem; color: #005a60; font-weight: 700; display: flex; align-items: center; gap: 6px;">
-      <span style="font-size: 1rem;">📝</span> Notionデータベース連携
+      <span style="font-size: 1rem;">📝</span> Notion連携
     </div>
-    <div style="display: flex; gap: 6px; align-items: center;">
+    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
       <button onclick="openAddProductModal()" class="add-product-btn">
         ➕ 商品追加
       </button>
-      <button onclick="fetchStocksFromNotion(false)" style="background: var(--amazon-yellow); border: 1px solid #d5a600; border-radius: 4px; padding: 5px 12px; font-size: 0.8rem; font-weight: 800; color: #0f1111; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-        <span id="quickSyncIcon">🔄</span> Notion同期
+      <button onclick="fetchStocksFromNotion(false)" style="background: var(--amazon-yellow); border: 1px solid #d5a600; border-radius: 4px; padding: 5px 10px; font-size: 0.78rem; font-weight: 800; color: #0f1111; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.1);" title="Notionの最新在庫をアプリに読み込む (受信)">
+        <span id="quickSyncIcon">🔄</span> Notionから取得
+      </button>
+      <button onclick="pushAllToNotion()" style="background: #ffffff; border: 1px solid #005a60; border-radius: 4px; padding: 5px 10px; font-size: 0.78rem; font-weight: 800; color: #005a60; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.1);" title="アプリの在庫数をNotion側に一括反映 (送信)">
+        <span id="quickPushIcon">📤</span> Notionへ一括送信
       </button>
     </div>
   </div>
@@ -2638,6 +2641,38 @@
         if (iconQuick) iconQuick.classList.remove("spinning");
         if (!silent) showToast("⚠️ Notion同期エラー (n8n接続を確認)", true);
       });
+    }
+
+    async function pushAllToNotion() {
+      const url = getWebhookUrl();
+      if (!url) return;
+      if (!confirm("Webアプリの現在の在庫数をNotionに一括送信（上書き反映）しますか？")) return;
+
+      const iconQuick = document.getElementById("quickPushIcon");
+      if (iconQuick) iconQuick.classList.add("spinning");
+      showToast("📤 Notionへ在庫データを一括反映中...");
+
+      let count = 0;
+      for (const p of products) {
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({
+              action: "update_stock",
+              pageId: p.notionPageId || "",
+              barcode: p.barcode || "",
+              name: p.name,
+              newStock: p.currentStock,
+              delta: 0
+            })
+          });
+          count++;
+        } catch(e) {}
+      }
+
+      if (iconQuick) iconQuick.classList.remove("spinning");
+      showToast(`✅ Notionへ一括反映完了 (${count}件)`);
     }
 
     function applySyncedProducts(syncedList) {
