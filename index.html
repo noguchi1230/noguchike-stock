@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>StockMart - 日用品ストック管理 & バーコード登録</title>
   <style>
     :root {
@@ -877,6 +880,61 @@
       max-width: 90%;
     }
     .toast-box.active { display: flex; }
+
+    /* 📱 iPhone / スマホ表示用レスポンシブ最適化 */
+    @media (max-width: 640px) {
+      .header-main {
+        flex-wrap: wrap;
+        padding: 8px 10px;
+        gap: 8px;
+      }
+      .logo-title {
+        font-size: 17px;
+      }
+      .search-wrapper {
+        order: 10;
+        width: 100%;
+        max-width: 100%;
+        height: 36px;
+      }
+      .search-input {
+        height: 36px;
+      }
+      .search-btn {
+        height: 36px;
+        width: 36px;
+      }
+      .notion-sync-btn, .scanner-trigger-btn {
+        padding: 5px 8px;
+        font-size: 11px;
+      }
+      .quick-notion-bar {
+        margin: 6px 10px 4px 10px;
+        padding: 6px 10px;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .product-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      main {
+        padding: 10px 10px 60px 10px;
+      }
+      .card-price-row {
+        gap: 4px;
+      }
+      .btn-compare-price {
+        font-size: 0.68rem;
+        padding: 2px 6px;
+      }
+      .toast-box {
+        bottom: 75px;
+        width: 90%;
+        font-size: 0.8rem;
+      }
+    }
+
   </style>
 </head>
 <body>
