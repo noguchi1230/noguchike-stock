@@ -2648,7 +2648,11 @@
           if (synced.pageId) p.notionPageId = synced.pageId;
           if (synced.threshold !== undefined) p.threshold = Number(synced.threshold);
           if (synced.idealStock !== undefined) p.idealStock = Number(synced.idealStock);
+          if (synced.price) p.price = synced.price;
+          if (synced.priceValue !== undefined) p.priceValue = Number(synced.priceValue);
+          if (synced.bottomMemo) p.bottomMemo = synced.bottomMemo;
           updateProductUI(p);
+          refreshCardTop3(p.id);
         } else {
           const newP = {
             id: "notion-" + (synced.pageId || Date.now()),
@@ -2659,7 +2663,8 @@
             barcode: synced.barcode || "",
             image: synced.image || "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=300&q=80",
             price: synced.price || "",
-            priceValue: synced.priceValue || 0,
+            priceValue: Number(synced.priceValue) || 0,
+            bottomMemo: synced.bottomMemo || "",
             currentStock: Number(synced.currentStock) || 0,
             threshold: Number(synced.threshold) || 1,
             idealStock: Number(synced.idealStock) || 2,
@@ -2669,6 +2674,7 @@
           };
           products.unshift(newP);
           renderDynamicProductCard(newP);
+          refreshCardTop3(newP.id);
         }
       });
       saveState();
@@ -2868,6 +2874,21 @@
           }
         });
       }
+
+      // 🚀 アプリ起動時にNotionから最新在庫を自動でバックグラウンド取得！
+      setTimeout(() => {
+        fetchStocksFromNotion(true);
+      }, 300);
+    });
+
+    // 📱 タブ切替・スリープ復帰時にも自動でNotionと同期
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        fetchStocksFromNotion(true);
+      }
+    });
+    window.addEventListener("pageshow", () => {
+      fetchStocksFromNotion(true);
     });
   </script>
 </body>
