@@ -2407,17 +2407,65 @@
       syncCreateProductToNotion(newItem);
     }
 
+    // 🗑️ 削除済み商品ID・バーコードの永続管理 (復活防止)
+    function getDeletedList() {
+      const d = safeStorage.get("stockmart_deleted_items_v1");
+      return d ? JSON.parse(d) : [];
+    }
+
+    function addDeletedItem(id, barcode, pageId, name) {
+      const list = getDeletedList();
+      list.push({
+        id: id || "",
+        barcode: barcode || "",
+        pageId: pageId || "",
+        name: (name || "").trim()
+      });
+      safeStorage.set("stockmart_deleted_items_v1", JSON.stringify(list));
+    }
+
+    function isItemDeleted(id, barcode, pageId, name) {
+      const list = getDeletedList();
+      const n = (name || "").trim();
+      return list.some(d => {
+        if (id && d.id && d.id === id) return true;
+        if (pageId && d.pageId && d.pageId === pageId) return true;
+        if (barcode && d.barcode && d.barcode === barcode) return true;
+        if (n && d.name && d.name === n) return true;
+        return false;
+      });
+    }
+
     function confirmDeleteProduct(id) {
+      const card = document.querySelector(`.product-card[data-id="${id}"]`);
       const item = products.find(p => p.id === id);
-      if (!item) return;
-      if (confirm(`「${item.name}」をストック一覧から削除しますか？`)) {
-        products = products.filter(p => p.id !== id);
+      const cardTitle = card ? card.querySelector(".card-title")?.textContent?.trim() : "";
+      const prodName = item ? item.name : (cardTitle || "この商品");
+      const barcode = item ? item.barcode : (card ? card.getAttribute("data-barcode") : "");
+      const pageId = item ? item.notionPageId : "";
+
+      if (confirm(`「${prodName}」をストック一覧から削除しますか？`)) {
+        // 1. 復活防止リストに登録
+        addDeletedItem(id, barcode, pageId, prodName);
+
+        // 2. products配列から除外
+        products = products.filter(p => p.id !== id && (!barcode || p.barcode !== barcode));
         saveState();
-        const card = document.querySelector(`.product-card[data-id="${id}"]`);
+
+        // 3. 画面上のカードを確実に即時削除
         if (card) card.remove();
+
+        // 4. アラート更新と通知
         updateAlertBanner();
-        showToast(`🗑️ 「${item.name}」を削除しました`);
-        syncDeleteProductToNotion(item);
+        showToast(`🗑️ 「${prodName}」を削除しました`);
+
+        // 5. Notion / n8nへ削除リクエスト送信
+        syncDeleteProductToNotion({
+          id: id,
+          notionPageId: pageId,
+          barcode: barcode,
+          name: prodName
+        });
       }
     }
 
@@ -2677,6 +2725,10 @@
 
     function applySyncedProducts(syncedList) {
       syncedList.forEach(synced => {
+        // 🗑️ ユーザーが削除した商品はNotionから同期されても復活させない
+        if (isItemDeleted(null, synced.barcode, synced.pageId, synced.name)) {
+          return;
+        }
         let p = products.find(prod => (synced.pageId && prod.notionPageId === synced.pageId) || (synced.barcode && prod.barcode === synced.barcode) || prod.name === synced.name);
         if (p) {
           p.currentStock = Number(synced.currentStock);
@@ -2889,6 +2941,19 @@
     document.addEventListener("DOMContentLoaded", () => {
       const sp = safeStorage.get("stockmart_products_v3");
       products = sp ? JSON.parse(sp) : JSON.parse(JSON.stringify(INITIAL_PRODUCTS));
+
+      // 🗑️ 削除済み商品を初期リストおよびDOMから確実にパージ
+      products = products.filter(p => !isItemDeleted(p.id, p.barcode, p.notionPageId, p.name));
+      saveState();
+
+      document.querySelectorAll(".product-card").forEach(card => {
+        const cid = card.getAttribute("data-id");
+        const cbarcode = card.getAttribute("data-barcode");
+        const ctitle = card.querySelector(".card-title")?.textContent?.trim() || "";
+        if (isItemDeleted(cid, cbarcode, null, ctitle) || !products.some(p => p.id === cid)) {
+          card.remove();
+        }
+      });
 
       products.forEach(p => {
         updateProductUI(p);
