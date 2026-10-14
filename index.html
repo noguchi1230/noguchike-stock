@@ -2452,11 +2452,8 @@
         products = products.filter(p => p.id !== id && (!barcode || p.barcode !== barcode));
         saveState();
 
-        // 3. 画面上のカードを確実に即時削除
-        if (card) card.remove();
-
-        // 4. アラート更新と通知
-        updateAlertBanner();
+        // 3. 画面上の全カードを再描画（削除を完全反映）
+        renderAllProducts();
         showToast(`🗑️ 「${prodName}」を削除しました`);
 
         // 5. Notion / n8nへ削除リクエスト送信
@@ -2532,7 +2529,21 @@
         </div>
       `;
 
-      container.prepend(card);
+      container.appendChild(card);
+    }
+
+    function renderAllProducts() {
+      const container = document.getElementById("productGrid");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const activeList = products.filter(p => !isItemDeleted(p.id, p.barcode, p.notionPageId, p.name));
+      activeList.forEach(p => {
+        renderDynamicProductCard(p);
+      });
+
+      updateAlertBanner();
+      applyFilters();
     }
 
     // スキャナーモーダル
@@ -2765,7 +2776,7 @@
         }
       });
       saveState();
-      updateAlertBanner();
+      renderAllProducts();
     }
 
     function syncStockChangeToNotion(item, delta) {
@@ -2942,23 +2953,12 @@
       const sp = safeStorage.get("stockmart_products_v3");
       products = sp ? JSON.parse(sp) : JSON.parse(JSON.stringify(INITIAL_PRODUCTS));
 
-      // 🗑️ 削除済み商品を初期リストおよびDOMから確実にパージ
+      // 🗑️ 削除済み商品をフィルタリングして保存
       products = products.filter(p => !isItemDeleted(p.id, p.barcode, p.notionPageId, p.name));
       saveState();
 
-      document.querySelectorAll(".product-card").forEach(card => {
-        const cid = card.getAttribute("data-id");
-        const cbarcode = card.getAttribute("data-barcode");
-        const ctitle = card.querySelector(".card-title")?.textContent?.trim() || "";
-        if (isItemDeleted(cid, cbarcode, null, ctitle) || !products.some(p => p.id === cid)) {
-          card.remove();
-        }
-      });
-
-      products.forEach(p => {
-        updateProductUI(p);
-        refreshCardTop3(p.id);
-      });
+      // 📦 全商品カードを確実に画面に描画
+      renderAllProducts();
 
       updateAlertBanner();
 
